@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import StudentForm from './components/StudentForm.jsx'
 import StudentTable from './components/StudentTable.jsx'
 import { sampleStudents } from './data/sampleStudents.js'
-import { createStudent, fetchStudents } from './services/studentService.js'
+import { createStudent, fetchStudents, updateStudent } from './services/studentService.js'
 import { filterStudents } from './utils/studentFilters.js'
 import './App.css'
 
@@ -21,12 +21,30 @@ function App() {
   const students = source === 'preview' ? previewStudents : apiStudents
 
   useEffect(() => {
-    if (source !== 'api') return
+    if (source !== 'api') {
+      return undefined
+    }
 
-    fetchStudents()
-      .then((records) => setApiStudents(records))
-      .catch((requestError) => setError(requestError.message))
-      .finally(() => setLoading(false))
+    const controller = new AbortController()
+
+    fetchStudents({}, controller.signal)
+      .then((records) => {
+        if (!controller.signal.aborted) {
+          setApiStudents(records)
+        }
+      })
+      .catch((requestError) => {
+        if (!controller.signal.aborted) {
+          setError(requestError.message)
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      })
+
+    return () => controller.abort()
   }, [source, refreshKey])
 
   const visibleStudents = filterStudents(students, query, statusFilter)
@@ -58,8 +76,23 @@ function App() {
   }
 
   async function handleSave(values) {
+    const editing = editingStudent
+
     if (source === 'preview') {
-      setPreviewStudents((current) => [{ ...values, _id: crypto.randomUUID() }, ...current])
+      if (editing) {
+        setPreviewStudents((current) =>
+          current.map((student) =>
+            student._id === editing._id ? { ...student, ...values } : student,
+          ),
+        )
+      } else {
+        setPreviewStudents((current) => [{ ...values, _id: crypto.randomUUID() }, ...current])
+      }
+    } else if (editing) {
+      const updated = await updateStudent(editing._id, values)
+      setApiStudents((current) =>
+        current.map((student) => (student._id === updated._id ? updated : student)),
+      )
     } else {
       const created = await createStudent(values)
       setApiStudents((current) => [created, ...current])
@@ -67,7 +100,7 @@ function App() {
 
     setFormOpen(false)
     setEditingStudent(null)
-    setNotice(editingStudent ? 'Student updated.' : 'Student added.')
+    setNotice(editing ? 'Student updated.' : 'Student added.')
   }
 
   return (
@@ -204,6 +237,7 @@ function App() {
       {formOpen && (
         <StudentForm
           student={editingStudent}
+          existingStudents={students}
           onClose={() => { setFormOpen(false); setEditingStudent(null) }}
           onSubmit={handleSave}
         />

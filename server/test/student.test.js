@@ -46,7 +46,7 @@ test('duplicate email database errors map to HTTP 409', () => {
   })
 })
 
-test('challenge 3: list query validates and applies search, status, and pagination', { todo: 'Candidate implementation' }, () => {
+test('challenge 3: list query validates and applies search, status, and pagination', () => {
   assert.deepEqual(buildStudentQuery({ q: 'aditi', status: 'Applied', page: '2', pageSize: '5' }), {
     filter: { status: 'Applied', search: 'aditi' },
     page: 2,

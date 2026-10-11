@@ -5,12 +5,30 @@ import studentRoutes from "./routes/studentRoutes.js";
 
 const app = express();
 
-app.use(helmet());
+function clientOrigin() {
+  return (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+}
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
-  })
+    origin(origin, callback) {
+      const allowed = clientOrigin();
+      if (!origin || origin === allowed) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
 );
 
 app.use(express.json());

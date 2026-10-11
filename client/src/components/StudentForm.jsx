@@ -1,34 +1,43 @@
 import { useState } from 'react'
-import { validateStudent } from '../utils/studentValidation.js'
+import { getStudentFieldErrors } from '../utils/studentValidation.js'
 
 const statuses = ['Applied', 'Interview', 'Offered', 'Placed']
 
-function StudentForm({ student, onClose, onSubmit }) {
+function StudentForm({ student, existingStudents, onClose, onSubmit }) {
   const [values, setValues] = useState({
     name: student?.name ?? '',
     email: student?.email ?? '',
     course: student?.course ?? '',
     status: student?.status ?? 'Applied',
   })
-  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function updateField(event) {
     setValues((current) => ({ ...current, [event.target.name]: event.target.value }))
-    setError('')
+    setFieldErrors((current) => ({ ...current, [event.target.name]: '' }))
+    setSubmitError('')
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
-    const validationMessage = validateStudent(values)
-    if (validationMessage) {
-      setError(validationMessage)
+    const errors = getStudentFieldErrors(values, {
+      students: existingStudents,
+      editingId: student?._id ?? null,
+    })
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
 
+    setIsSubmitting(true)
     try {
       await onSubmit(values)
     } catch (submitError) {
-      setError(submitError.message)
+      setSubmitError(submitError.message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -46,25 +55,31 @@ function StudentForm({ student, onClose, onSubmit }) {
           <label className="form-field">
             Student name
             <input name="name" value={values.name} onChange={updateField} autoFocus />
+            {fieldErrors.name && <span className="field-error" role="alert">{fieldErrors.name}</span>}
           </label>
           <label className="form-field">
             Email address
             <input name="email" type="email" value={values.email} onChange={updateField} />
+            {fieldErrors.email && <span className="field-error" role="alert">{fieldErrors.email}</span>}
           </label>
           <label className="form-field">
             Course
             <input name="course" value={values.course} onChange={updateField} placeholder="e.g. B.Tech CSE" />
+            {fieldErrors.course && <span className="field-error" role="alert">{fieldErrors.course}</span>}
           </label>
           <label className="form-field">
             Placement status
             <select name="status" value={values.status} onChange={updateField}>
               {statuses.map((status) => <option key={status}>{status}</option>)}
             </select>
+            {fieldErrors.status && <span className="field-error" role="alert">{fieldErrors.status}</span>}
           </label>
-          {error && <p className="form-error" role="alert">{error}</p>}
+          {submitError && <p className="form-error" role="alert">{submitError}</p>}
           <div className="form-actions">
-            <button className="cancel-button" type="button" onClick={onClose}>Cancel</button>
-            <button className="primary-button" type="submit">{student ? 'Save changes' : 'Add student'}</button>
+            <button className="cancel-button" type="button" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+            <button className="primary-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving…' : student ? 'Save changes' : 'Add student'}
+            </button>
           </div>
         </form>
       </section>

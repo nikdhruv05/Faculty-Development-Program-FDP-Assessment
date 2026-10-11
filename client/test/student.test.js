@@ -17,11 +17,11 @@ test('form validation rejects missing required fields', () => {
   assert.equal(validateStudent({ name: 'Aditi Sharma', email: 'a@example.edu', course: 'BCA' }), '')
 })
 
-test('challenge 1: search and status filtering work together', { todo: 'Candidate implementation' }, () => {
+test('challenge 1: search and status filtering work together', () => {
   assert.deepEqual(filterStudents(sampleStudents, 'SHARMA', 'Applied'), [sampleStudents[0]])
 })
 
-test('challenge 2: malformed and duplicate email values are rejected', { todo: 'Candidate implementation' }, () => {
+test('challenge 2: malformed and duplicate email values are rejected', () => {
   assert.match(validateStudent({ name: 'Aditi', email: 'not-an-email', course: 'BCA' }), /email/i)
 })
 
